@@ -27,7 +27,7 @@ SGA_OVERLAP_FLAGS:= -m61
 %.bwamem.bam : $(REF).pac %_R1.fastq.gz %_R2.fastq.gz
 	bwa mem $(SGA_THREAD) $(REF) $(word 2,$^) $(word 3,$^) | samtools view -Sb - | samtools sort -o $@ -
 
-%.bwamem.bam : $(REF).pac %_.fastq.gz
+%.bwamem.bam : $(REF).pac %.fastq.gz
 	bwa mem $(SGA_THREAD) $(REF) $(word 2,$^) | samtools view -Sb - | samtools sort -o $@ -
 
 %.bwamem.bam : $(REF).pac %.fa 
