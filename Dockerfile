@@ -17,7 +17,7 @@ RUN Rscript -e 'install.packages("visNetwork",repos="https://stat.ethz.ch/CRAN/"
 ADD Makefile /tmp/Makefile
 ADD Analyse_bam.R /tmp/Analyse_bam.R
 
-CMD ["-f","/tmp/Makefile"]
+ENV MAKEFILES /tmp/Makefile
 
 WORKDIR /export
 
