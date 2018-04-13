@@ -24,6 +24,7 @@ SGA_OVERLAP_FLAGS:= -m61
 	        $*.preproc.filter.pass.kmercount.bwamem.bam.bai \
 	        $*.preproc.filter.pass.rmdup.merged.asqg.gz \
 	        $*.preproc.filter.pass.rmdup.merged.variants.tsv \
+	        $*.preproc.filter.pass.rmdup.merged.variants.bed \
 	        $*.preproc.filter.pass.rmdup.merged.variants.pdf \
 	        $*.preproc.filter.pass.rmdup.merged.variants.html
  
@@ -75,8 +76,8 @@ SGA_OVERLAP_FLAGS:= -m61
 %.asqg.gz : %.fa %.bwt
 	cd $(@D);sga overlap $(SGA_THREAD) $(SGA_OVERLAP_FLAGS) $(notdir $<) 
 
-%.variants.tsv : %.bwamem.bam %.kmermap.bam
-	Rscript -e 'source("/tmp/Analyse_bam.R");vartbl <- variant.table("$(word 2,$^)","$(word 1,$^)","$(REF_GFF)");export.variant.tsv(vartbl,"$@")'
+%.variants.bed %.variants.tsv : %.bwamem.bam %.kmermap.bam
+	Rscript -e 'source("/tmp/Analyse_bam.R");vartbl <- variant.table("$(word 2,$^)","$(word 1,$^)","$(REF_GFF)");export.variant.tsv(vartbl,"$*.variants.tsv");export.bed(reduce(unlist(vartbl$$coveredGenomicRegions)),"$*.variants.bed")'
 
 %.variants.pdf : %.variants.tsv
 	Rscript -e 'source("/tmp/Analyse_bam.R");vartbl <- read.variant.table("$<");ggsave("$@",plot.variants.stats(vartbl))'
