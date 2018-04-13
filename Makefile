@@ -13,7 +13,19 @@ SGA_OVERLAP_FLAGS:= -m61
 
 
 %.all:
-	$(MAKE) $*.preproc.filter.pass.rmdup.merged.bwamem.bam $*.preproc.filter.pass.rmdup.merged.bwamem.bam.bai $*.bwamem.bam $*.bwamem.bam.bai $*.preproc.filter.pass.kmercount.tsv $*.preproc.filter.pass.kmercount.fa 	$*.preproc.filter.pass.rmdup.merged.fa $*.preproc.filter.pass.rmdup.merged.kmermap.bam $*.preproc.filter.pass.kmercount.bwamem.bam $*.preproc.filter.pass.kmercount.bwamem.bam.bai $*.preproc.filter.pass.rmdup.merged.asqg.gz $*.preproc.filter.pass.rmdup.merged.variants.tsv
+	$(MAKE) $*.preproc.filter.pass.rmdup.merged.bwamem.bam \
+					$*.preproc.filter.pass.rmdup.merged.bwamem.bam.bai \
+	        $*.bwamem.bam $*.bwamem.bam.bai \
+	        $*.preproc.filter.pass.kmercount.tsv \
+	        $*.preproc.filter.pass.kmercount.fa \
+	        $*.preproc.filter.pass.rmdup.merged.fa \
+	        $*.preproc.filter.pass.rmdup.merged.kmermap.bam \
+	        $*.preproc.filter.pass.kmercount.bwamem.bam \
+	        $*.preproc.filter.pass.kmercount.bwamem.bam.bai \
+	        $*.preproc.filter.pass.rmdup.merged.asqg.gz \
+	        $*.preproc.filter.pass.rmdup.merged.variants.tsv \
+	        $*.preproc.filter.pass.rmdup.merged.variants.pdf \
+	        $*.preproc.filter.pass.rmdup.merged.variants.html
  
 %.preproc.bwt : %.preproc.fa
 	cd $(@D);sga index $(SGA_THREAD) -a ropebwt $(notdir $^)
@@ -63,19 +75,12 @@ SGA_OVERLAP_FLAGS:= -m61
 %.asqg.gz : %.fa %.bwt
 	cd $(@D);sga overlap $(SGA_THREAD) $(SGA_OVERLAP_FLAGS) $(notdir $<) 
 
-%.variants.tsv : %.bwamem.bam %.kmermap.bam %.asqg.gz
+%.variants.tsv : %.bwamem.bam %.kmermap.bam
 	Rscript -e 'source("/tmp/Analyse_bam.R");vartbl <- variant.table("$(word 2,$^)","$(word 1,$^)","$(REF_GFF)");export.variant.tsv(vartbl,"$@")'
 
+%.variants.pdf : %.variants.tsv
+	Rscript -e 'source("/tmp/Analyse_bam.R");vartbl <- read.variant.table("$<");ggsave("$@",plot.variants.stats(vartbl))'
 
-
-
-
-
-
-
-
-
-
-
-
+%.variants.html : %.variants.tsv %.asqg.gz %.bwamem.bam
+	Rscript -e 'source("/tmp/Analyse_bam.R");vartbl <- read.variant.table("$<");visSave(visAssemblyGraph("$(word 2,$^)","$(word 3,$^)",vartbl[["contig"]]),"$@")'
 
