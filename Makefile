@@ -1,5 +1,5 @@
-REF:= data/ref.fa
-REF_GFF:= data/ref.gff
+REF:= ref.fa
+REF_GFF:= ref.gff
 
 SGA_PREPROC_FLAGS:= -r AGATCGGAAGAGCACACGTCTGAACTCCAGTC -c AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTG
 SGA_FILTER_FLAGS:= -x15 -k61
@@ -66,13 +66,8 @@ SGA_OVERLAP_FLAGS:= -m61
 %.variants.tsv : %.bwamem.bam %.kmermap.bam %.asqg.gz
 	Rscript -e 'source("/tmp/Analyse_bam.R");vartbl <- variant.table("$(word 2,$^)","$(word 1,$^)","$(REF_GFF)");export.variant.tsv(vartbl,"$@")'
 
-
-
-
-
-
-
-
+%.clean :
+	cd $(@D);rm -f $**.bwt $**.rbwt $**.sai $**.rsai $**.sa $**.pac $**.ann $**.amb $*.preproc.fa $*.preproc.discard.fa $*.preproc.filter.pass.fa $*.preproc.filter.pass.rmdup.dups.fa $*.preproc.filter.pass.rmdup.fa $(REF).rsai $(REF).rbwt $(REF).sai $(REF).sa $(REF).amb $(REF).pac $(REF).bwt $(REF).ann $(REF:%.fa=%).sa $(REF:%.fa=%).pac $(REF:%.fa=%).bwt $(REF:%.fa=%).rsai $(REF:%.fa=%).rbwt $(REF:%.fa=%).sai
 
 
 
