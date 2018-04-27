@@ -1,5 +1,5 @@
-REF:= ref.fa
-REF_GFF:= ref.gff
+REF:= /tmp/SA564.fa
+REF_GFF:= /tmp/SA564.gff
 
 SGA_PREPROC_FLAGS:= -r AGATCGGAAGAGCACACGTCTGAACTCCAGTC -c AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTG
 SGA_FILTER_FLAGS:= -x15 -k61
@@ -7,13 +7,27 @@ SGA_FMMERGE_FLAGS:= -m61
 SGA_KMERCOUNT_FLAGS:= -k61
 SGA_THREAD:= -t4
 SGA_OVERLAP_FLAGS:= -m61
+KMER_FILTER_THRESHOLD:= 10
 -include Makefile.config
 
 .PRECIOUS: %.bwamem.bam %.bwt %.fa.pac %.preproc.bwt %.filter.pass.fa %.preproc.fa %.rmdup.merged.fa
 
 
 %.all:
-	$(MAKE) $*.preproc.filter.pass.rmdup.merged.bwamem.bam $*.preproc.filter.pass.rmdup.merged.bwamem.bam.bai $*.bwamem.bam $*.bwamem.bam.bai $*.preproc.filter.pass.kmercount.tsv $*.preproc.filter.pass.kmercount.fa 	$*.preproc.filter.pass.rmdup.merged.fa $*.preproc.filter.pass.rmdup.merged.kmermap.bam $*.preproc.filter.pass.kmercount.bwamem.bam $*.preproc.filter.pass.kmercount.bwamem.bam.bai $*.preproc.filter.pass.rmdup.merged.asqg.gz $*.preproc.filter.pass.rmdup.merged.variants.tsv
+	$(MAKE) $*.preproc.filter.pass.rmdup.merged.bwamem.bam \
+					$*.preproc.filter.pass.rmdup.merged.bwamem.bam.bai \
+	        $*.bwamem.bam $*.bwamem.bam.bai \
+	        $*.preproc.filter.pass.kmercount.tsv \
+	        $*.preproc.filter.pass.kmercount.fa \
+	        $*.preproc.filter.pass.rmdup.merged.fa \
+	        $*.preproc.filter.pass.rmdup.merged.kmermap.bam \
+	        $*.preproc.filter.pass.kmercount.bwamem.bam \
+	        $*.preproc.filter.pass.kmercount.bwamem.bam.bai \
+	        $*.preproc.filter.pass.rmdup.merged.asqg.gz \
+	        $*.preproc.filter.pass.rmdup.merged.variants.tsv \
+	        $*.preproc.filter.pass.rmdup.merged.variants.bed \
+	        $*.preproc.filter.pass.rmdup.merged.variants.pdf \
+	        $*.preproc.filter.pass.rmdup.merged.variants.html
  
 %.preproc.bwt : %.preproc.fa
 	cd $(@D);sga index $(SGA_THREAD) -a ropebwt $(notdir $^)
@@ -27,7 +41,7 @@ SGA_OVERLAP_FLAGS:= -m61
 %.bwamem.bam : $(REF).pac %_R1.fastq.gz %_R2.fastq.gz
 	bwa mem $(SGA_THREAD) $(REF) $(word 2,$^) $(word 3,$^) | samtools view -Sb - | samtools sort -o $@ -
 
-%.bwamem.bam : $(REF).pac %_.fastq.gz
+%.bwamem.bam : $(REF).pac %.fastq.gz
 	bwa mem $(SGA_THREAD) $(REF) $(word 2,$^) | samtools view -Sb - | samtools sort -o $@ -
 
 %.bwamem.bam : $(REF).pac %.fa 
@@ -52,7 +66,7 @@ SGA_OVERLAP_FLAGS:= -m61
 	cd $(@D);sga fm-merge $(SGA_THREAD) $(SGA_FMMERGE_FLAGS) $(notdir $<)
 
 %.kmercount.tsv : %.bwt $(REF:%.fa=%).bwt
-	sga kmer-count $(SGA_KMERCOUNT_FLAGS) $^ |awk '($$2>10) && ($$3>10) && ($$4==0) && ($$5==0)' > $@
+	sga kmer-count $(SGA_KMERCOUNT_FLAGS) $^ |awk '($$2>$(KMER_FILTER_THRESHOLD)) && ($$3>$(KMER_FILTER_THRESHOLD)) && ($$4==0) && ($$5==0)' > $@
 
 %.kmercount.fa : %.kmercount.tsv
 	cat $^ | awk '{print ">" NR "_" $$2 "_" $$3; print $$1}' > $@
@@ -63,14 +77,15 @@ SGA_OVERLAP_FLAGS:= -m61
 %.asqg.gz : %.fa %.bwt
 	cd $(@D);sga overlap $(SGA_THREAD) $(SGA_OVERLAP_FLAGS) $(notdir $<) 
 
-%.variants.tsv : %.bwamem.bam %.kmermap.bam %.asqg.gz
-	Rscript -e 'source("/tmp/Analyse_bam.R");vartbl <- variant.table("$(word 2,$^)","$(word 1,$^)","$(REF_GFF)");export.variant.tsv(vartbl,"$@")'
-
 %.clean :
 	cd $(@D);rm -f $**.bwt $**.rbwt $**.sai $**.rsai $**.sa $**.pac $**.ann $**.amb $*.preproc.fa $*.preproc.discard.fa $*.preproc.filter.pass.fa $*.preproc.filter.pass.rmdup.dups.fa $*.preproc.filter.pass.rmdup.fa $(REF).rsai $(REF).rbwt $(REF).sai $(REF).sa $(REF).amb $(REF).pac $(REF).bwt $(REF).ann $(REF:%.fa=%).sa $(REF:%.fa=%).pac $(REF:%.fa=%).bwt $(REF:%.fa=%).rsai $(REF:%.fa=%).rbwt $(REF:%.fa=%).sai
 
+%.variants.bed %.variants.tsv : %.bwamem.bam %.kmermap.bam $(REF_GFF)
+	Rscript -e 'source("/tmp/Analyse_bam.R");vartbl <- variant.table("$(word 2,$^)","$(word 1,$^)","$(REF_GFF)");export.variant.tsv(vartbl,"$*.variants.tsv");export.bed(reduce(unlist(vartbl$$coveredGenomicRegions)),"$*.variants.bed")'
 
+%.variants.pdf : %.variants.tsv
+	Rscript -e 'source("/tmp/Analyse_bam.R");vartbl <- read.variant.table("$<");ggsave("$@",plot.variants.stats(vartbl))'
 
-
-
+%.variants.html : %.variants.tsv %.asqg.gz %.bwamem.bam
+	Rscript -e 'source("/tmp/Analyse_bam.R");vartbl <- read.variant.table("$<");visSave(visAssemblyGraph("$(word 2,$^)","$(word 3,$^)",vartbl[["contig"]]),"$@")'
 
