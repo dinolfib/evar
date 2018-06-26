@@ -1,14 +1,17 @@
-REF:= /tmp/SA564.fa
-REF_GFF:= /tmp/SA564.gff
 
-SGA_PREPROC_FLAGS:= -r AGATCGGAAGAGCACACGTCTGAACTCCAGTC -c AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTG
-SGA_FILTER_FLAGS:= -x15 -k61
-SGA_FMMERGE_FLAGS:= -m61
-SGA_KMERCOUNT_FLAGS:= -k61
-SGA_THREAD:= -t4
-SGA_OVERLAP_FLAGS:= -m61
-KMER_FILTER_THRESHOLD:= 10
 -include Makefile.config
+
+REF ?= /tmp/SA564.fa
+REF_GFF ?= /tmp/SA564.gff
+SGA_PREPROC_FLAGS ?= -r AGATCGGAAGAGCACACGTCTGAACTCCAGTC -c AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTG
+SGA_FILTER_FLAGS ?= -x10 -k35
+SGA_FMMERGE_FLAGS ?= -m35
+SGA_KMERCOUNT_FLAGS ?= -k35
+SGA_THREAD ?= -t4
+SGA_OVERLAP_FLAGS ?= -m35
+KMER_FILTER_THRESHOLD ?= 10
+BWA_KMERMAP_FLAGS ?= -T10
+BACKGROUND_BWT ?= $(REF:%.fa=%).bwt
 
 .PRECIOUS: %.bwamem.bam %.bwt %.fa.pac %.preproc.bwt %.filter.pass.fa %.preproc.fa %.rmdup.merged.fa
 
@@ -65,14 +68,14 @@ KMER_FILTER_THRESHOLD:= 10
 %.rmdup.merged.fa : %.rmdup.fa %.rmdup.bwt
 	cd $(@D);sga fm-merge $(SGA_THREAD) $(SGA_FMMERGE_FLAGS) $(notdir $<)
 
-%.kmercount.tsv : %.bwt $(REF:%.fa=%).bwt
+%.kmercount.tsv : %.bwt $(BACKGROUND_BWT)
 	sga kmer-count $(SGA_KMERCOUNT_FLAGS) $^ |awk '($$2>$(KMER_FILTER_THRESHOLD)) && ($$3>$(KMER_FILTER_THRESHOLD)) && ($$4==0) && ($$5==0)' > $@
 
 %.kmercount.fa : %.kmercount.tsv
 	cat $^ | awk '{print ">" NR "_" $$2 "_" $$3; print $$1}' > $@
 
 %.rmdup.merged.kmermap.bam : %.rmdup.merged.fa.pac %.kmercount.fa 
-	bwa mem -a $*.rmdup.merged.fa $*.kmercount.fa | awk '($$6~/^[0-9]+M$$/ && $$12~/NM:i:0/) || $$0~/^@/' |samtools view -Sb - | samtools sort -o $@ -
+	bwa mem -a $(BWA_KMERMAP_FLAGS) $*.rmdup.merged.fa $*.kmercount.fa | awk '($$6~/^[0-9]+M$$/ && $$12~/NM:i:0/) || $$0~/^@/' |samtools view -Sb - | samtools sort -o $@ -
 
 %.asqg.gz : %.fa %.bwt
 	cd $(@D);sga overlap $(SGA_THREAD) $(SGA_OVERLAP_FLAGS) $(notdir $<) 
