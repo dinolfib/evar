@@ -52,7 +52,7 @@ ctgLocs2refLocs <- function(K,aln) {
   mcols(h)$genomic$cigar_origin <- cigar(aln)[subjectHits(h)]
   mcols(h)$genomic$cigar <- local({
     x <- shift(mcols(h)$genomic,-start(aln)[subjectHits(h)]+1)
-    cigarNarrow(cigar(aln)[subjectHits(h)],start(x),end(x))
+    cigarNarrow(mcols(h)$genomic$cigar_origin,start(x),pmin(end(x),cigarWidthAlongReferenceSpace(mcols(h)$genomic$cigar_origin)))
   })
   mcols(h)$genomic$mapq <- mcols(aln)$mapq[subjectHits(h)]
   extractList(mcols(h)$genomic,as(h,"PartitioningByEnd"))
